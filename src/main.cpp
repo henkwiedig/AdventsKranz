@@ -12,6 +12,8 @@ Preferences preferences;
 int deviceID = 0; // Initialize the device ID
 String currentTime = "N/A";
 String picktimeTime = "N/A";
+String wlanPrefix;
+String apPassword;
 
 // Define your GPIO pins
 const int gpioPins[] = {GPIO_NUM_23, GPIO_NUM_22, GPIO_NUM_21, GPIO_NUM_19, GPIO_NUM_18, GPIO_NUM_5, GPIO_NUM_17, GPIO_NUM_16};
@@ -30,15 +32,13 @@ void setup() {
 
   // Retrieve the stored Device ID
   deviceID = preferences.getInt("deviceID", 0);
+  wlanPrefix = preferences.getString("wlanPrefix", "Adventskranz");
+  apPassword = preferences.getString("apPassword", "caritas1337");
 
   // Generate a unique SSID based on ESP32's MAC address
   uint8_t mac[6];
   WiFi.macAddress(mac);
-  String macStr = String(mac[3], HEX) + String(mac[4], HEX) + String(mac[5], HEX);
-  String apSSID = "Adventskranz-" + macStr;
-
-  // Set a password for the AP (change to your desired password)
-  const char* apPassword = "caritas1337";
+  String apSSID = wlanPrefix + "-" + deviceID;
 
   // Configure ESP as an access point
   WiFi.softAP(apSSID.c_str(), apPassword);
@@ -66,6 +66,12 @@ void setup() {
     // Display the Device ID
     html += "<h2>Device ID: " + String(deviceID) + "</h2>";
 
+    // Display wlanPrefix
+    html += "<h2>wlanPrefix: " + String(wlanPrefix) + "</h2>";
+
+    // Display apPassword
+    html += "<h2>apPassword: " + String(apPassword) + "</h2>";
+
     // Add a form for setting the day and time
     html += "<h2>Set Day and Time:</h2>";
     html += "<form method='GET' action='/setdaytime'>";
@@ -81,6 +87,22 @@ void setup() {
     html += "  <input type='number' id='id' name='id' value='" + String(deviceID) + "'>";
     html += "  <input type='submit' value='Set ID'>";
     html += "</form>";
+
+    // Add a form for setting the device ID
+    html += "<h2>Set WLAN Prefix:</h2>";
+    html += "<form method='GET' action='/setwlanprefix'>";
+    html += "  <label for 'id'>Prefix:</label>";
+    html += "  <input type='string' id='prefix' name='prefix' value='" + String(wlanPrefix) + "'>";
+    html += "  <input type='submit' value='Set Prefix'>";
+    html += "</form>";
+
+    // Add a form for setting the apPassword
+    html += "<h2>Set apPassword:</h2>";
+    html += "<form method='GET' action='/setapPassword'>";
+    html += "  <label for 'id'>apPassword:</label>";
+    html += "  <input type='string' id='appassword' name='appassword' value='" + String(apPassword) + "'>";
+    html += "  <input type='submit' value='Set apPassword'>";
+    html += "</form>";      
 
     html += "<h2>Settable GPIO Pins:</h2>";
     for (int i = 0; i < numPins; i++) {
@@ -148,6 +170,18 @@ void setup() {
     }
     request->redirect("/");
   });
+
+  server.on("/setwlanprefix", HTTP_GET, [](AsyncWebServerRequest *request) {
+    wlanPrefix = request->arg("prefix");
+    preferences.putString("wlanPrefix", request->arg("prefix"));
+    request->redirect("/");
+  });
+
+  server.on("/setapPassword", HTTP_GET, [](AsyncWebServerRequest *request) {
+    apPassword = request->arg("appassword");
+    preferences.putString("apPassword", request->arg("appassword"));
+    request->redirect("/");
+  });  
 
   server.on("/setid", HTTP_GET, [](AsyncWebServerRequest *request) {
     String newID = request->arg("id");
