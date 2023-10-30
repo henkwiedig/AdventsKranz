@@ -10,6 +10,8 @@ DNSServer dnsServer;
 Preferences preferences;
 
 int deviceID = 0; // Initialize the device ID
+int on;
+int off;
 String currentTime = "N/A";
 String picktimeTime = "N/A";
 String wlanPrefix;
@@ -32,6 +34,8 @@ void setup() {
 
   // Retrieve the stored Device ID
   deviceID = preferences.getInt("deviceID", 0);
+  on = preferences.getInt("on", 8);
+  off = preferences.getInt("off", 20);
   wlanPrefix = preferences.getString("wlanPrefix", "Adventskranz");
   apPassword = preferences.getString("apPassword", "caritas1337");
 
@@ -63,15 +67,6 @@ void setup() {
     // Display the current time
     html += "<h2>Current Time: " + currentTime + "</h2>";
 
-    // Display the Device ID
-    html += "<h2>Device ID: " + String(deviceID) + "</h2>";
-
-    // Display wlanPrefix
-    html += "<h2>wlanPrefix: " + String(wlanPrefix) + "</h2>";
-
-    // Display apPassword
-    html += "<h2>apPassword: " + String(apPassword) + "</h2>";
-
     // Add a form for setting the day and time
     html += "<h2>Set Day and Time:</h2>";
     html += "<form method='GET' action='/setdaytime'>";
@@ -102,7 +97,23 @@ void setup() {
     html += "  <label for 'id'>apPassword:</label>";
     html += "  <input type='string' id='appassword' name='appassword' value='" + String(apPassword) + "'>";
     html += "  <input type='submit' value='Set apPassword'>";
-    html += "</form>";      
+    html += "</form>";
+
+    // Add a form for setting the on hour
+    html += "<h2>Set on hour:</h2>";
+    html += "<form method='GET' action='/seton'>";
+    html += "  <label for 'id'>on:</label>";
+    html += "  <input type='string' id='on' name='on' value='" + String(on) + "'>";
+    html += "  <input type='submit' value='Set on'>";
+    html += "</form>";
+
+    // Add a form for setting the off hour
+    html += "<h2>Set off hour:</h2>";
+    html += "<form method='GET' action='/setoff'>";
+    html += "  <label for 'id'>off:</label>";
+    html += "  <input type='string' id='off' name='off' value='" + String(off) + "'>";
+    html += "  <input type='submit' value='Set off'>";
+    html += "</form>";     
 
     html += "<h2>Settable GPIO Pins:</h2>";
     for (int i = 0; i < numPins; i++) {
@@ -181,6 +192,18 @@ void setup() {
     apPassword = request->arg("appassword");
     preferences.putString("apPassword", request->arg("appassword"));
     ESP.restart();
+  });
+
+  server.on("/seton", HTTP_GET, [](AsyncWebServerRequest *request) {
+    on = request->arg("on").toInt();
+    preferences.putInt("on", request->arg("on").toInt());
+    request->redirect("/");
+  });
+
+  server.on("/setoff", HTTP_GET, [](AsyncWebServerRequest *request) {
+    off = request->arg("off").toInt();
+    preferences.putInt("off", request->arg("off").toInt());
+    request->redirect("/");
   });  
 
   server.on("/setid", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -207,7 +230,7 @@ void loop() {
   strftime(timeStr, sizeof(timeStr), "%Y-%m-%dT%H:%M", &timeinfo);
   picktimeTime = timeStr;
   Serial.println(currentTime);
-  if (timeinfo.tm_hour >= 8 && timeinfo.tm_hour < 20 && timeinfo.tm_mon == 11) {
+  if (timeinfo.tm_hour >= on && timeinfo.tm_hour < off && timeinfo.tm_mon == 11) {
     Serial.print("Current Day of Month: ");
     Serial.print(timeinfo.tm_mday);
     Serial.print(" deviceID ");
