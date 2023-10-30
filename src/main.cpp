@@ -174,13 +174,13 @@ void setup() {
   server.on("/setwlanprefix", HTTP_GET, [](AsyncWebServerRequest *request) {
     wlanPrefix = request->arg("prefix");
     preferences.putString("wlanPrefix", request->arg("prefix"));
-    request->redirect("/");
+    ESP.restart();
   });
 
   server.on("/setapPassword", HTTP_GET, [](AsyncWebServerRequest *request) {
     apPassword = request->arg("appassword");
     preferences.putString("apPassword", request->arg("appassword"));
-    request->redirect("/");
+    ESP.restart();
   });  
 
   server.on("/setid", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -190,7 +190,7 @@ void setup() {
       // Store the new Device ID in preferences
       preferences.putInt("deviceID", deviceID);
     }
-    request->redirect("/");
+    ESP.restart();
   });
 
   server.begin();
