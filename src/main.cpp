@@ -1,10 +1,12 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <DNSServer.h>
 #include <ESPAsyncWebServer.h>
 #include <Preferences.h>
 #include <time.h>
 
 AsyncWebServer server(80);
+DNSServer dnsServer;
 Preferences preferences;
 
 int deviceID = 0; // Initialize the device ID
@@ -41,6 +43,12 @@ void setup() {
 
   // Set the IP address for the AP
   WiFi.softAPConfig(apIP, apIP, subnet);
+
+  dnsServer.start(53, "*", WiFi.softAPIP());
+
+  server.on("/generate_204", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->redirect("/");
+  });
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     String html = "<html><body>";
@@ -174,6 +182,6 @@ void loop() {
       digitalWrite(gpioPins[i], LOW);
     }
   };
-  
+  dnsServer.processNextRequest();
   delay(1000);
 }
