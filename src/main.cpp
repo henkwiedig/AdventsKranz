@@ -20,6 +20,12 @@ const int numPins = sizeof(gpioPins) / sizeof(gpioPins[0]);
 void setup() {
   Serial.begin(115200);
 
+  struct tm timeinfo;
+  strptime("2023-11-15T09:00:00", "%Y-%m-%dT%H:%M:%S", &timeinfo);
+  time_t t = mktime(&timeinfo);
+  struct timeval tv = {t, 0};
+  settimeofday(&tv, NULL);     
+
   preferences.begin("device_prefs", false);
 
   // Retrieve the stored Device ID
@@ -63,7 +69,7 @@ void setup() {
     // Add a form for setting the day and time
     html += "<h2>Set Day and Time:</h2>";
     html += "<form method='GET' action='/setdaytime'>";
-    html += "  <label for='daytime'>Enter day and time (YYYY-MM-DD HH:MM:SS):</label>";
+    html += "  <label for='daytime'>Enter day and time:</label>";
     html += "  <input type='datetime-local' id='daytime' name='daytime' value='" + picktimeTime + "'>";
     html += "  <input type='submit' value='Set Day and Time'>";
     html += "</form>";
