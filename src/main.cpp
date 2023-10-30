@@ -86,12 +86,12 @@ void setup() {
     pinMode(gpioPins[i], OUTPUT);
     server.on(("/gpio/on/" + String(gpioPins[i])).c_str(), HTTP_GET, [i](AsyncWebServerRequest *request) {
       digitalWrite(gpioPins[i], HIGH);
-      request->send(200, "text/plain", "GPIO " + String(gpioPins[i]) + " is On");
+      request->redirect("/");
     });
 
     server.on(("/gpio/off/" + String(gpioPins[i])).c_str(), HTTP_GET, [i](AsyncWebServerRequest *request) {
       digitalWrite(gpioPins[i], LOW);
-      request->send(200, "text/plain", "GPIO " + String(gpioPins[i]) + " is Off");
+      request->redirect("/");
     });
   }
 
