@@ -11,7 +11,7 @@ Preferences preferences;
 
 int deviceID = 0; // Initialize the device ID
 String currentTime = "N/A";
-
+String picktimeTime = "N/A";
 
 // Define your GPIO pins
 const int gpioPins[] = {GPIO_NUM_23, GPIO_NUM_22, GPIO_NUM_21, GPIO_NUM_19, GPIO_NUM_18, GPIO_NUM_5, GPIO_NUM_17, GPIO_NUM_16};
@@ -64,7 +64,7 @@ void setup() {
     html += "<h2>Set Day and Time:</h2>";
     html += "<form method='GET' action='/setdaytime'>";
     html += "  <label for='daytime'>Enter day and time (YYYY-MM-DD HH:MM:SS):</label>";
-    html += "  <input type='text' id='daytime' name='daytime'>";
+    html += "  <input type='datetime-local' id='daytime' name='daytime' value='" + picktimeTime + "'>";
     html += "  <input type='submit' value='Set Day and Time'>";
     html += "</form>";
 
@@ -118,9 +118,11 @@ void setup() {
   });    
 
   server.on("/setdaytime", HTTP_GET, [](AsyncWebServerRequest *request) {
-    String newDayTime = request->arg("daytime");
+    String newDayTime = request->arg("daytime") + ":00";
     struct tm timeinfo;
-    if (strptime(newDayTime.c_str(), "%Y-%m-%d %H:%M:%S", &timeinfo) != NULL) {
+    Serial.print("Setting new time: ");
+    Serial.println(newDayTime.c_str());
+    if (strptime(newDayTime.c_str(), "%Y-%m-%dT%H:%M:%S", &timeinfo) != NULL) {
       // Print the current time
       Serial.print("Current Time: ");
       Serial.print(timeinfo.tm_year + 1900);
@@ -162,6 +164,8 @@ void loop() {
   char timeStr[20];
   strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeinfo);
   currentTime = timeStr;
+  strftime(timeStr, sizeof(timeStr), "%Y-%m-%dT%H:%M", &timeinfo);
+  picktimeTime = timeStr;
   Serial.println(currentTime);
   if (timeinfo.tm_hour >= 8 && timeinfo.tm_hour < 20 && timeinfo.tm_mon == 11) {
     Serial.print("Current Day of Month: ");
