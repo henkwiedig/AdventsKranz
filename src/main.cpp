@@ -155,7 +155,7 @@ void loop() {
   strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeinfo);
   currentTime = timeStr;
   Serial.println(currentTime);
-  if (timeinfo.tm_hour >= 8 && timeinfo.tm_hour < 20 ) {
+  if (timeinfo.tm_hour >= 8 && timeinfo.tm_hour < 20 && timeinfo.tm_mon == 11) {
     Serial.print("Current Day of Month: ");
     Serial.print(timeinfo.tm_mday);
     Serial.print(" deviceID ");
