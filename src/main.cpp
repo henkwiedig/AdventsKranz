@@ -143,7 +143,7 @@ void setup() {
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     String html = "<html><body>";
-    html += "<h1>ESP32 GPIO Control</h1>";
+    html += "<h1>ESP32 GPIO Control, Version " + String(VERSION) + "</h1>";
 
     // Display the current time
     html += "<h2>Current Time: " + currentTime + "</h2>";
