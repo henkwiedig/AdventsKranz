@@ -4,6 +4,9 @@
 #include <ESPAsyncWebServer.h>
 #include <Preferences.h>
 #include <time.h>
+#include <Update.h>
+
+#define U_PART U_SPIFFS
 
 AsyncWebServer server(80);
 DNSServer dnsServer;
@@ -19,10 +22,46 @@ String currentTime;
 String wlanPrefix;
 String apPassword;
 const char* NULLpassword = NULL;
+size_t content_len;
 
 // Define your GPIO pins
 const int gpioPins[] = {GPIO_NUM_23, GPIO_NUM_22, GPIO_NUM_21, GPIO_NUM_19, GPIO_NUM_18, GPIO_NUM_5, GPIO_NUM_17, GPIO_NUM_16};
 const int numPins = sizeof(gpioPins) / sizeof(gpioPins[0]);
+
+
+void handleDoUpdate(AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final) {
+  if (!index){
+    Serial.println("Update");
+    content_len = request->contentLength();
+    // if filename includes spiffs, update the spiffs partition
+    int cmd = (filename.indexOf("spiffs") > -1) ? U_PART : U_FLASH;
+
+    if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd)) {
+      Update.printError(Serial);
+    }
+  }
+
+  if (Update.write(data, len) != len) {
+    Update.printError(Serial);
+  } else {
+    Serial.printf("Progress: %d%%\n", (Update.progress()*100)/Update.size());
+  }
+
+  if (final) {
+    Serial.println("Update final");
+    AsyncWebServerResponse *response = request->beginResponse(302, "text/plain", "Please wait while the device reboots");
+    response->addHeader("Refresh", "20");  
+    response->addHeader("Location", "/");
+    request->send(response);
+    if (!Update.end(true)){
+      Update.printError(Serial);
+    } else {
+      Serial.println("Update complete");
+      Serial.flush();
+      ESP.restart();
+    }
+  }
+}
 
 void setup() {
   Serial.begin(115200);
@@ -159,9 +198,10 @@ void setup() {
       html += "<a href='/gpio/off/" + String(gpioPins[i]) + "'>Turn Off</a></p>";
     }
 
-    html += "<a href='/gpio/on/all'>Turn All On</a>&nbsp;";
-    html += "<a href='/gpio/off/all'>Turn All Off</a>&nbsp;";
-    html += "<a href='/reboot'>Reboot</a>&nbsp;";
+    html += "<a href='/gpio/on/all'>Turn All On</a><br>";
+    html += "<a href='/gpio/off/all'>Turn All Off</a><br>";
+    html += "<form method='POST' action='/doUpdate' enctype='multipart/form-data'><label for 'id'>Update:</label><input type='file' id='update' name='update'><input type='submit' value='Update'></form><br>";
+    html += "<a href='/reboot'>Reboot</a>";
 
     html += "</body></html>";
     request->send(200, "text/html", html);
@@ -267,7 +307,14 @@ void setup() {
     preferences.putString("currentTime", currentTime);
     request->redirect("/");
     ESP.restart();
-  });  
+  });
+
+   server.on("/doUpdate", HTTP_POST,
+    [](AsyncWebServerRequest *request) {},
+    [](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final) {
+      handleDoUpdate(request, filename, index, data, len, final);
+    }
+  );
 
   server.begin();
 }
@@ -299,7 +346,7 @@ void loop() {
   Serial.println(currentTime);
 
   //Hande GPIOS
-  if (timeinfo.tm_hour >= on && timeinfo.tm_hour < off && timeinfo.tm_mon == 11) {
+  if (timeinfo.tm_hour >= on && timeinfo.tm_hour < off && timeinfo.tm_mon == 11 && !Update.isRunning()) {
     Serial.print("Current Day of Month: ");
     Serial.print(timeinfo.tm_mday);
     Serial.print(" deviceID ");
