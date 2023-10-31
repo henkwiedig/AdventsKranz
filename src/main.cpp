@@ -12,6 +12,8 @@ Preferences preferences;
 int deviceID = 0; // Initialize the device ID
 int on;
 int off;
+int tick = 0;
+int bootcount;
 String currentTime;
 String wlanPrefix;
 String apPassword;
@@ -25,6 +27,23 @@ void setup() {
   Serial.begin(115200);
 
   preferences.begin("device_prefs", false);
+
+  //Factory reset counter
+  bootcount = preferences.getInt("bootcount", 0);
+  bootcount++;
+  preferences.putInt("bootcount", bootcount);
+  Serial.print("Current bootcount: ");
+  Serial.println(bootcount);
+  if (bootcount > 3) {
+    Serial.print("Factory Reset !!!!!");
+    preferences.putInt("bootcount", 0);
+    preferences.putInt("deviceID", 0);
+    preferences.putInt("on", 8);
+    preferences.putInt("off", 20);
+    preferences.putString("wlanPrefix", "Adventskranz");
+    preferences.putString("apPassword", "");
+    preferences.putString("currentTime", "2023-11-15T09:00:00");    
+  }
 
   // Retrieve the stored Device ID
   deviceID = preferences.getInt("deviceID", 0);
@@ -226,6 +245,13 @@ void setup() {
 }
 
 void loop() {
+
+  tick++;
+  if (tick == 5) {
+    Serial.println("Resettting bootcount");
+    preferences.putInt("bootcount", 0);
+  }
+
   time_t now;
   struct tm timeinfo;
   time(&now);
