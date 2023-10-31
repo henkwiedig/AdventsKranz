@@ -1,12 +1,17 @@
 #include <Arduino.h>
-#include <WiFi.h>
 #include <DNSServer.h>
 #include <ESPAsyncWebServer.h>
+#ifdef ESP8266
+#include <Updater.h>
+#include <ESP8266WiFi.h>
+#define U_PART U_FS
+#else
+#include <WiFi.h>
+#include <Update.h>
+#define U_PART U_SPIFFS
+#endif
 #include <Preferences.h>
 #include <time.h>
-#include <Update.h>
-
-#define U_PART U_SPIFFS
 
 AsyncWebServer server(80);
 DNSServer dnsServer;
@@ -25,7 +30,11 @@ const char* NULLpassword = NULL;
 size_t content_len;
 
 // Define your GPIO pins
+#ifdef ESP8266
+const int gpioPins[] = {3, 4, 5, 6, 7, 8, 9, 10};
+#else
 const int gpioPins[] = {GPIO_NUM_23, GPIO_NUM_22, GPIO_NUM_21, GPIO_NUM_19, GPIO_NUM_18, GPIO_NUM_5, GPIO_NUM_17, GPIO_NUM_16};
+#endif
 const int numPins = sizeof(gpioPins) / sizeof(gpioPins[0]);
 
 
@@ -35,8 +44,12 @@ void handleDoUpdate(AsyncWebServerRequest *request, const String& filename, size
     content_len = request->contentLength();
     // if filename includes spiffs, update the spiffs partition
     int cmd = (filename.indexOf("spiffs") > -1) ? U_PART : U_FLASH;
-
+#ifdef ESP8266
+    Update.runAsync(true);
+    if (!Update.begin(content_len, cmd)) {
+#else
     if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd)) {
+#endif
       Update.printError(Serial);
     }
   }
