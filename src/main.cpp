@@ -15,6 +15,7 @@ int off;
 String currentTime;
 String wlanPrefix;
 String apPassword;
+const char* NULLpassword = NULL;
 
 // Define your GPIO pins
 const int gpioPins[] = {GPIO_NUM_23, GPIO_NUM_22, GPIO_NUM_21, GPIO_NUM_19, GPIO_NUM_18, GPIO_NUM_5, GPIO_NUM_17, GPIO_NUM_16};
@@ -30,7 +31,7 @@ void setup() {
   on = preferences.getInt("on", 8);
   off = preferences.getInt("off", 20);
   wlanPrefix = preferences.getString("wlanPrefix", "Adventskranz");
-  apPassword = preferences.getString("apPassword", "caritas1337");
+  apPassword = preferences.getString("apPassword", "");
 
   currentTime = preferences.getString("currentTime", "2023-11-15T09:00:00");
   struct tm timeinfo;
@@ -45,7 +46,8 @@ void setup() {
   String apSSID = wlanPrefix + "-" + deviceID;
 
   // Configure ESP as an access point
-  WiFi.softAP(apSSID.c_str(), apPassword);
+  Serial.println("apPassword: " + apPassword);
+  WiFi.softAP(apSSID.c_str(), apPassword.length() == 0 ? NULLpassword : apPassword);
 
   // IP address of the ESP's AP
   IPAddress apIP(192, 168, 4, 1);
