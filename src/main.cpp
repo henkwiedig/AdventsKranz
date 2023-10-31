@@ -12,8 +12,7 @@ Preferences preferences;
 int deviceID = 0; // Initialize the device ID
 int on;
 int off;
-String currentTime = "N/A";
-String picktimeTime = "N/A";
+String currentTime;
 String wlanPrefix;
 String apPassword;
 
@@ -24,12 +23,6 @@ const int numPins = sizeof(gpioPins) / sizeof(gpioPins[0]);
 void setup() {
   Serial.begin(115200);
 
-  struct tm timeinfo;
-  strptime("2023-11-15T09:00:00", "%Y-%m-%dT%H:%M:%S", &timeinfo);
-  time_t t = mktime(&timeinfo);
-  struct timeval tv = {t, 0};
-  settimeofday(&tv, NULL);     
-
   preferences.begin("device_prefs", false);
 
   // Retrieve the stored Device ID
@@ -38,6 +31,13 @@ void setup() {
   off = preferences.getInt("off", 20);
   wlanPrefix = preferences.getString("wlanPrefix", "Adventskranz");
   apPassword = preferences.getString("apPassword", "caritas1337");
+
+  currentTime = preferences.getString("currentTime", "2023-11-15T09:00:00");
+  struct tm timeinfo;
+  strptime(currentTime.c_str(), "%Y-%m-%dT%H:%M:%S", &timeinfo);
+  time_t t = mktime(&timeinfo);
+  struct timeval tv = {t, 0};
+  settimeofday(&tv, NULL);   
 
   // Generate a unique SSID based on ESP32's MAC address
   uint8_t mac[6];
@@ -71,7 +71,7 @@ void setup() {
     html += "<h2>Set Day and Time:</h2>";
     html += "<form method='GET' action='/setdaytime'>";
     html += "  <label for='daytime'>Enter day and time:</label>";
-    html += "  <input type='datetime-local' id='daytime' name='daytime' value='" + picktimeTime + "'>";
+    html += "  <input type='datetime-local' id='daytime' name='daytime' value='" + currentTime + "'>";
     html += "  <input type='submit' value='Set Day and Time'>";
     html += "</form>";
 
@@ -179,18 +179,21 @@ void setup() {
       struct timeval tv = {t, 0};
       settimeofday(&tv, NULL);   
     }
+    preferences.putString("currentTime", request->arg("daytime") + ":00");
     request->redirect("/");
   });
 
   server.on("/setwlanprefix", HTTP_GET, [](AsyncWebServerRequest *request) {
     wlanPrefix = request->arg("prefix");
     preferences.putString("wlanPrefix", request->arg("prefix"));
+    preferences.putString("currentTime", currentTime);
     ESP.restart();
   });
 
   server.on("/setapPassword", HTTP_GET, [](AsyncWebServerRequest *request) {
     apPassword = request->arg("appassword");
     preferences.putString("apPassword", request->arg("appassword"));
+    preferences.putString("currentTime", currentTime);
     ESP.restart();
   });
 
@@ -213,6 +216,7 @@ void setup() {
       // Store the new Device ID in preferences
       preferences.putInt("deviceID", deviceID);
     }
+    preferences.putString("currentTime", currentTime);
     ESP.restart();
   });
 
@@ -225,11 +229,11 @@ void loop() {
   time(&now);
   localtime_r(&now, &timeinfo);
   char timeStr[20];
-  strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeinfo);
+  strftime(timeStr, sizeof(timeStr), "%Y-%m-%dT%H:%M:%S", &timeinfo);
   currentTime = timeStr;
-  strftime(timeStr, sizeof(timeStr), "%Y-%m-%dT%H:%M", &timeinfo);
-  picktimeTime = timeStr;
   Serial.println(currentTime);
+
+  //Hande GPIOS
   if (timeinfo.tm_hour >= on && timeinfo.tm_hour < off && timeinfo.tm_mon == 11) {
     Serial.print("Current Day of Month: ");
     Serial.print(timeinfo.tm_mday);
@@ -249,6 +253,12 @@ void loop() {
       digitalWrite(gpioPins[i], LOW);
     }
   };
+
+  //Store time from time to time
+  if (timeinfo.tm_min == 0 && timeinfo.tm_sec == 0) {
+    Serial.println("Sotring Time");
+    preferences.putString("currentTime", currentTime);
+  }
   dnsServer.processNextRequest();
   delay(1000);
 }
