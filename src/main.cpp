@@ -21,6 +21,7 @@ int deviceID = 0; // Initialize the device ID
 int on;
 int off;
 int tick = 0;
+int timeSlice;
 int bootcount;
 int wlanTimeout;
 String currentTime;
@@ -93,6 +94,7 @@ void setup() {
     preferences.putInt("deviceID", 0);
     preferences.putInt("on", 8);
     preferences.putInt("off", 20);
+    preferences.putInt("timeSlice", 3600);
     preferences.putInt("wlanTimeout", 0);
     preferences.putString("wlanPrefix", "Adventskranz");
     preferences.putString("apPassword", "");
@@ -108,6 +110,7 @@ void setup() {
   deviceID = preferences.getInt("deviceID", 0);
   on = preferences.getInt("on", 8);
   off = preferences.getInt("off", 20);
+  timeSlice = preferences.getInt("timeSlice", 3600);
   wlanTimeout = preferences.getInt("wlanTimeout", 0);
   wlanPrefix = preferences.getString("wlanPrefix", "Adventskranz");
   apPassword = preferences.getString("apPassword", "");
@@ -155,6 +158,14 @@ void setup() {
     html += "  <input type='datetime-local' id='daytime' name='daytime' value='" + currentTime.substring(0,currentTime.length()-3) + "'>";
     html += "  <input type='submit' value='Set Day and Time'>";
     html += "</form>";
+
+    // Add a form for setting the timeSlice
+    html += "<h2>Set timeSlice:</h2>";
+    html += "<form method='GET' action='/settimeSlice'>";
+    html += "  <label for='timeSlice'>timeSlice:</label>";
+    html += "  <input type='number' id='timeSlice' name='timeSlice' value='" + String(timeSlice) + "'>";
+    html += "  <input type='submit' value='Set timeSlice'>";
+    html += "</form>";       
 
     // Add a form for setting the device ID
     html += "<h2>Set Device ID:</h2>";
@@ -316,6 +327,13 @@ void setup() {
     preferences.putString("currentTime", currentTime);
     ESP.restart();
   });
+
+  server.on("/settimeSlice", HTTP_GET, [](AsyncWebServerRequest *request) {
+    timeSlice = request->arg("timeSlice").toInt();
+    preferences.putInt("timeSlice", timeSlice);
+    request->redirect("/");
+  });
+
   server.on("/reboot", HTTP_GET, [](AsyncWebServerRequest *request) {
     preferences.putString("currentTime", currentTime);
     request->redirect("/");
@@ -348,6 +366,11 @@ void loop() {
     WiFi.mode(WIFI_OFF);
   }
 
+  //Store time from time to time
+  if (tick % timeSlice == 0) {
+    Serial.println("Storing Time");
+    preferences.putString("currentTime", currentTime);
+  }
 
   time_t now;
   struct tm timeinfo;
@@ -379,11 +402,6 @@ void loop() {
     }
   };
 
-  //Store time from time to time
-  if (timeinfo.tm_min == 0 && timeinfo.tm_sec == 0) {
-    Serial.println("Sotring Time");
-    preferences.putString("currentTime", currentTime);
-  }
   dnsServer.processNextRequest();
   delay(1000);
 }
