@@ -42,7 +42,12 @@ void setup() {
     preferences.putInt("off", 20);
     preferences.putString("wlanPrefix", "Adventskranz");
     preferences.putString("apPassword", "");
-    preferences.putString("currentTime", "2023-11-15T09:00:00");    
+    preferences.putString("currentTime", "2023-11-15T09:00:00");
+    for (int i = 0; i < numPins; i++) {
+      pinMode(gpioPins[i], OUTPUT);
+      digitalWrite(gpioPins[i], HIGH);
+      delay(1000);
+    }
   }
 
   // Retrieve the stored Device ID
