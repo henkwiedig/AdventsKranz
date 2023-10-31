@@ -14,6 +14,7 @@ int on;
 int off;
 int tick = 0;
 int bootcount;
+int wlanTimeout;
 String currentTime;
 String wlanPrefix;
 String apPassword;
@@ -40,6 +41,7 @@ void setup() {
     preferences.putInt("deviceID", 0);
     preferences.putInt("on", 8);
     preferences.putInt("off", 20);
+    preferences.putInt("wlanTimeout", 0);
     preferences.putString("wlanPrefix", "Adventskranz");
     preferences.putString("apPassword", "");
     preferences.putString("currentTime", "2023-11-15T09:00:00");
@@ -50,10 +52,11 @@ void setup() {
     }
   }
 
-  // Retrieve the stored Device ID
+  // Retrieve the stored settings
   deviceID = preferences.getInt("deviceID", 0);
   on = preferences.getInt("on", 8);
   off = preferences.getInt("off", 20);
+  wlanTimeout = preferences.getInt("wlanTimeout", 0);
   wlanPrefix = preferences.getString("wlanPrefix", "Adventskranz");
   apPassword = preferences.getString("apPassword", "");
 
@@ -123,6 +126,14 @@ void setup() {
     html += "  <label for 'id'>apPassword:</label>";
     html += "  <input type='string' id='appassword' name='appassword' value='" + String(apPassword) + "'>";
     html += "  <input type='submit' value='Set apPassword'>";
+    html += "</form>";
+
+    // Add a form for setting the wlanTimeout
+    html += "<h2>Set wlanTimeout:</h2>";
+    html += "<form method='GET' action='/setwlanTimeout'>";
+    html += "  <label for 'id'>wlanTimeout:</label>";
+    html += "  <input type='string' id='wlanTimeout' name='wlanTimeout' value='" + String(wlanTimeout) + "'>";
+    html += "  <input type='submit' value='Set wlanTimeout'>";
     html += "</form>";
 
     // Add a form for setting the on hour
@@ -223,6 +234,12 @@ void setup() {
     ESP.restart();
   });
 
+  server.on("/setwlanTimeout", HTTP_GET, [](AsyncWebServerRequest *request) {
+    wlanTimeout = request->arg("wlanTimeout").toInt();
+    preferences.putInt("wlanTimeout", wlanTimeout);
+    request->redirect("/");
+  });
+
   server.on("/seton", HTTP_GET, [](AsyncWebServerRequest *request) {
     on = request->arg("on").toInt();
     preferences.putInt("on", request->arg("on").toInt());
@@ -252,10 +269,19 @@ void setup() {
 void loop() {
 
   tick++;
+
+  //bootcount reset
   if (tick == 5) {
     Serial.println("Resettting bootcount");
     preferences.putInt("bootcount", 0);
   }
+
+  //wifi turn off after wlanTimeout seconds
+  if (tick == wlanTimeout) {
+    Serial.println("WiFi off");
+    WiFi.mode(WIFI_OFF);
+  }
+
 
   time_t now;
   struct tm timeinfo;
