@@ -92,7 +92,7 @@ void setup() {
     html += "<h2>Set Day and Time:</h2>";
     html += "<form method='GET' action='/setdaytime'>";
     html += "  <label for='daytime'>Enter day and time:</label>";
-    html += "  <input type='datetime-local' id='daytime' name='daytime' value='" + currentTime + "'>";
+    html += "  <input type='datetime-local' id='daytime' name='daytime' value='" + currentTime.substring(0,currentTime.length()-3) + "'>";
     html += "  <input type='submit' value='Set Day and Time'>";
     html += "</form>";
 
