@@ -161,6 +161,7 @@ void setup() {
 
     html += "<a href='/gpio/on/all'>Turn All On</a>&nbsp;";
     html += "<a href='/gpio/off/all'>Turn All Off</a>&nbsp;";
+    html += "<a href='/reboot'>Reboot</a>&nbsp;";
 
     html += "</body></html>";
     request->send(200, "text/html", html);
@@ -262,6 +263,11 @@ void setup() {
     preferences.putString("currentTime", currentTime);
     ESP.restart();
   });
+  server.on("/reboot", HTTP_GET, [](AsyncWebServerRequest *request) {
+    preferences.putString("currentTime", currentTime);
+    request->redirect("/");
+    ESP.restart();
+  });  
 
   server.begin();
 }
