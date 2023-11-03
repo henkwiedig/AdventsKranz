@@ -298,6 +298,7 @@ void setup() {
     apPassword = request->arg("appassword");
     preferences.putString("apPassword", request->arg("appassword"));
     preferences.putString("currentTime", currentTime);
+    request->redirect("/");
     ESP.restart();
   });
 
@@ -327,6 +328,7 @@ void setup() {
       preferences.putInt("deviceID", deviceID);
     }
     preferences.putString("currentTime", currentTime);
+    request->redirect("/");
     ESP.restart();
   });
 
