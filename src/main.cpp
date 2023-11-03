@@ -347,6 +347,10 @@ void setup() {
     }
   );
 
+  //all off by default
+  for (int i = 0; i < numPins; i++) {
+    digitalWrite(gpioPins[i], LOW);
+  }
   server.begin();
 }
 
