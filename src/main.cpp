@@ -146,7 +146,7 @@ void setup() {
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     String html = "<html><body>";
-    html += "<h1>ESP32 GPIO Control, Version " + String(VERSION) + "</h1>";
+    html += "<h1>Adventskranz nach Wichern</h1>";
 
     // Display the current time
     html += "<h2>Current Time: " + currentTime + "</h2>";
@@ -225,7 +225,9 @@ void setup() {
     html += "<a href='/gpio/on/all'>Turn All On</a><br>";
     html += "<a href='/gpio/off/all'>Turn All Off</a><br>";
     html += "<form method='POST' action='/doUpdate' enctype='multipart/form-data'><label for 'id'>Update:</label><input type='file' id='update' name='update'><input type='submit' value='Update'></form><br>";
-    html += "<a href='/reboot'>Reboot</a>";
+    html += "<a href='/reboot'>Reboot</a><br><br>";
+    html += "Version: " + String(VERSION)+ "<br>";
+    html += "Build Time: " + String(__DATE__) + " " + String(__TIME__) + "<br>" ;
 
     html += "</body></html>";
     request->send(200, "text/html", html);
