@@ -39,6 +39,15 @@ const int gpioPins[] = {GPIO_NUM_23, GPIO_NUM_22, GPIO_NUM_21, GPIO_NUM_19, GPIO
 const int numPins = sizeof(gpioPins) / sizeof(gpioPins[0]);
 
 
+String getCompileTimeAsString() {
+  //"Nov 3 2023 17:25:45"
+  struct tm timeinfo;
+  strptime((String(__DATE__) + " " + String(__TIME__)).c_str() , "%b %d %Y %H:%M:%S", &timeinfo);
+  char timeStr[20];
+  strftime(timeStr, sizeof(timeStr), "%Y-%m-%dT%H:%M:%s", &timeinfo);
+  return String(timeStr);
+}
+
 void handleDoUpdate(AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final) {
   if (!index){
     Serial.println("Update");
@@ -98,7 +107,7 @@ void setup() {
     preferences.putInt("wlanTimeout", 0);
     preferences.putString("wlanPrefix", "Adventskranz");
     preferences.putString("apPassword", "");
-    preferences.putString("currentTime", "2023-11-15T09:00:00");
+    preferences.putString("currentTime", getCompileTimeAsString());
     for (int i = 0; i < numPins; i++) {
       pinMode(gpioPins[i], OUTPUT);
       digitalWrite(gpioPins[i], HIGH);
@@ -115,7 +124,7 @@ void setup() {
   wlanPrefix = preferences.getString("wlanPrefix", "Adventskranz");
   apPassword = preferences.getString("apPassword", "");
 
-  currentTime = preferences.getString("currentTime", "2023-11-15T09:00:00");
+  currentTime = preferences.getString("currentTime", getCompileTimeAsString());
   struct tm timeinfo;
   strptime(currentTime.c_str(), "%Y-%m-%dT%H:%M:%S", &timeinfo);
   time_t t = mktime(&timeinfo);
