@@ -20,7 +20,12 @@ AsyncWebServer server(80);
 DNSServer dnsServer;
 Preferences preferences;
 
+#ifdef ESP8266
+TwoWire I2C = TwoWire();
+#else
 TwoWire I2C = TwoWire(0);
+#endif
+
 RTC_DS3231 rtc;
 
 int deviceID = 0; // Initialize the device ID
@@ -41,7 +46,7 @@ const int gpioPins[] = {16, 14, 12, 13, 15, 0, 4, 5};
 int SDA_PIN = 1;
 int SCL_PIN = 3;
 #define SDA_PIN 1
-#define SCL_PIN 3
+#define SCL_PIN 2
 #else
 const int gpioPins[] = {GPIO_NUM_23, GPIO_NUM_22, GPIO_NUM_21, GPIO_NUM_19, GPIO_NUM_18, GPIO_NUM_5, GPIO_NUM_17, GPIO_NUM_16};
 #define SDA_PIN GPIO_NUM_14
@@ -112,11 +117,12 @@ void setup() {
 
 #ifdef ESP8266
   Serial.end();
+  I2C.pins(1, 2);
 #else
   Serial.begin(115200);
+  I2C.setPins(SDA_PIN, SCL_PIN);
 #endif
 
-  I2C.setPins(SDA_PIN, SCL_PIN);
   if (! rtc.begin(&I2C)) {
     Serial.println("RTC module is NOT found");
     pinMode(gpioPins[0], OUTPUT);
