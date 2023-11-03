@@ -12,10 +12,15 @@
 #endif
 #include <Preferences.h>
 #include <time.h>
+#include <SPI.h>
+#include <Wire.h>
+#include <RTClib.h>
 
 AsyncWebServer server(80);
 DNSServer dnsServer;
 Preferences preferences;
+
+RTC_DS3231 rtc;
 
 int deviceID = 0; // Initialize the device ID
 int on;
@@ -33,8 +38,12 @@ size_t content_len;
 // Define your GPIO pins
 #ifdef ESP8266
 const int gpioPins[] = {16, 14, 12, 13, 15, 0, 4, 5};
+int SDA_PIN = 1;
+int SCL_PIN = 3;
 #else
 const int gpioPins[] = {GPIO_NUM_23, GPIO_NUM_22, GPIO_NUM_21, GPIO_NUM_19, GPIO_NUM_18, GPIO_NUM_5, GPIO_NUM_17, GPIO_NUM_16};
+int SDA_PIN = GPIO_NUM_34;
+int SCL_PIN = GPIO_NUM_35;
 #endif
 const int numPins = sizeof(gpioPins) / sizeof(gpioPins[0]);
 
@@ -87,8 +96,34 @@ void handleDoUpdate(AsyncWebServerRequest *request, const String& filename, size
 }
 
 void setup() {
-  Serial.begin(115200);
 
+#ifdef ESP8266
+  Serial.end();
+#else
+  Serial.begin(115200);
+#endif
+
+  Wire.begin(SDA_PIN,SCL_PIN);
+  if (! rtc.begin()) {
+    Serial.println("RTC module is NOT found");
+    while (1);
+  }
+  DateTime now = rtc.now();
+  Serial.print("ESP32 RTC Date Time: ");
+  Serial.print(now.year(), DEC);
+  Serial.print('/');
+  Serial.print(now.month(), DEC);
+  Serial.print('/');
+  Serial.print(now.day(), DEC);
+  Serial.print(" (");
+  Serial.print(now.dayOfTheWeek());
+  Serial.print(") ");
+  Serial.print(now.hour(), DEC);
+  Serial.print(':');
+  Serial.print(now.minute(), DEC);
+  Serial.print(':');
+  Serial.println(now.second(), DEC);  
+  
   preferences.begin("device_prefs", false);
 
   //Factory reset counter
