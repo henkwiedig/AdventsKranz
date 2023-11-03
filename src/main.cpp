@@ -20,13 +20,13 @@ AsyncWebServer server(80);
 DNSServer dnsServer;
 Preferences preferences;
 
+TwoWire I2C = TwoWire(0);
 RTC_DS3231 rtc;
 
 int deviceID = 0; // Initialize the device ID
 int on;
 int off;
 int tick = 0;
-int timeSlice;
 int bootcount;
 int wlanTimeout;
 String currentTime;
@@ -40,21 +40,34 @@ size_t content_len;
 const int gpioPins[] = {16, 14, 12, 13, 15, 0, 4, 5};
 int SDA_PIN = 1;
 int SCL_PIN = 3;
+#define SDA_PIN 1
+#define SCL_PIN 3
 #else
 const int gpioPins[] = {GPIO_NUM_23, GPIO_NUM_22, GPIO_NUM_21, GPIO_NUM_19, GPIO_NUM_18, GPIO_NUM_5, GPIO_NUM_17, GPIO_NUM_16};
-int SDA_PIN = GPIO_NUM_34;
-int SCL_PIN = GPIO_NUM_35;
+#define SDA_PIN GPIO_NUM_14
+#define SCL_PIN GPIO_NUM_27
 #endif
 const int numPins = sizeof(gpioPins) / sizeof(gpioPins[0]);
 
+DateTime parseDateTime(String datetimeStr) {
+  // Split the received string into date and time parts
+  String dateStr = datetimeStr.substring(0, 10);
+  String timeStr = datetimeStr.substring(11, 19);
 
-String getCompileTimeAsString() {
-  //"Nov 3 2023 17:25:45"
-  struct tm timeinfo;
-  strptime((String(__DATE__) + " " + String(__TIME__)).c_str() , "%b %d %Y %H:%M:%S", &timeinfo);
-  char timeStr[20];
-  strftime(timeStr, sizeof(timeStr), "%Y-%m-%dT%H:%M:%s", &timeinfo);
-  return String(timeStr);
+  // Parse the date
+  int year = dateStr.substring(0, 4).toInt();
+  int month = dateStr.substring(5, 7).toInt();
+  int day = dateStr.substring(8, 10).toInt();
+
+  // Parse the time
+  int hour = timeStr.substring(0, 2).toInt();
+  int minute = timeStr.substring(3, 5).toInt();
+  int second = timeStr.substring(6, 9).toInt();
+
+  // Create a DateTime object
+  DateTime parsedDatetime(year, month, day, hour, minute, second);
+
+  return parsedDatetime;
 }
 
 void handleDoUpdate(AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final) {
@@ -103,27 +116,22 @@ void setup() {
   Serial.begin(115200);
 #endif
 
-  Wire.begin(SDA_PIN,SCL_PIN);
-  if (! rtc.begin()) {
+  I2C.setPins(SDA_PIN, SCL_PIN);
+  if (! rtc.begin(&I2C)) {
     Serial.println("RTC module is NOT found");
-    while (1);
+    pinMode(gpioPins[0], OUTPUT);
+    while(1) {
+        digitalWrite(gpioPins[0], HIGH);
+        delay(500);
+        digitalWrite(gpioPins[0], LOW);
+        delay(500);
+    }
   }
-  DateTime now = rtc.now();
-  Serial.print("ESP32 RTC Date Time: ");
-  Serial.print(now.year(), DEC);
-  Serial.print('/');
-  Serial.print(now.month(), DEC);
-  Serial.print('/');
-  Serial.print(now.day(), DEC);
-  Serial.print(" (");
-  Serial.print(now.dayOfTheWeek());
-  Serial.print(") ");
-  Serial.print(now.hour(), DEC);
-  Serial.print(':');
-  Serial.print(now.minute(), DEC);
-  Serial.print(':');
-  Serial.println(now.second(), DEC);  
-  
+  if (rtc.lostPower()) {
+    Serial.println("RTC lost power, let's set the time!");
+    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  }
+
   preferences.begin("device_prefs", false);
 
   //Factory reset counter
@@ -142,7 +150,6 @@ void setup() {
     preferences.putInt("wlanTimeout", 0);
     preferences.putString("wlanPrefix", "Adventskranz");
     preferences.putString("apPassword", "");
-    preferences.putString("currentTime", getCompileTimeAsString());
     for (int i = 0; i < numPins; i++) {
       pinMode(gpioPins[i], OUTPUT);
       digitalWrite(gpioPins[i], HIGH);
@@ -154,17 +161,9 @@ void setup() {
   deviceID = preferences.getInt("deviceID", 0);
   on = preferences.getInt("on", 8);
   off = preferences.getInt("off", 20);
-  timeSlice = preferences.getInt("timeSlice", 3600);
   wlanTimeout = preferences.getInt("wlanTimeout", 0);
   wlanPrefix = preferences.getString("wlanPrefix", "Adventskranz");
   apPassword = preferences.getString("apPassword", "");
-
-  currentTime = preferences.getString("currentTime", getCompileTimeAsString());
-  struct tm timeinfo;
-  strptime(currentTime.c_str(), "%Y-%m-%dT%H:%M:%S", &timeinfo);
-  time_t t = mktime(&timeinfo);
-  struct timeval tv = {t, 0};
-  settimeofday(&tv, NULL);   
 
   // Generate a unique SSID based on ESP32's MAC address
   uint8_t mac[6];
@@ -199,17 +198,9 @@ void setup() {
     html += "<h2>Set Day and Time:</h2>";
     html += "<form method='GET' action='/setdaytime'>";
     html += "  <label for='daytime'>Enter day and time:</label>";
-    html += "  <input type='datetime-local' id='daytime' name='daytime' value='" + currentTime.substring(0,currentTime.length()-3) + "'>";
+    html += "  <input type='datetime-local' step='1' id='daytime' name='daytime' value='" + currentTime + "'>";
     html += "  <input type='submit' value='Set Day and Time'>";
     html += "</form>";
-
-    // Add a form for setting the timeSlice
-    html += "<h2>Set timeSlice:</h2>";
-    html += "<form method='GET' action='/settimeSlice'>";
-    html += "  <label for='timeSlice'>timeSlice:</label>";
-    html += "  <input type='number' id='timeSlice' name='timeSlice' value='" + String(timeSlice) + "'>";
-    html += "  <input type='submit' value='Set timeSlice'>";
-    html += "</form>";       
 
     // Add a form for setting the device ID
     html += "<h2>Set Device ID:</h2>";
@@ -305,43 +296,22 @@ void setup() {
   });    
 
   server.on("/setdaytime", HTTP_GET, [](AsyncWebServerRequest *request) {
-    String newDayTime = request->arg("daytime") + ":00";
-    struct tm timeinfo;
-    Serial.print("Setting new time: ");
-    Serial.println(newDayTime.c_str());
-    if (strptime(newDayTime.c_str(), "%Y-%m-%dT%H:%M:%S", &timeinfo) != NULL) {
-      // Print the current time
-      Serial.print("Current Time: ");
-      Serial.print(timeinfo.tm_year + 1900);
-      Serial.print("-");
-      Serial.print(timeinfo.tm_mon + 1);
-      Serial.print("-");
-      Serial.print(timeinfo.tm_mday);
-      Serial.print(" ");
-      Serial.print(timeinfo.tm_hour);
-      Serial.print(":");
-      Serial.print(timeinfo.tm_min);
-      Serial.print(":");
-      Serial.println(timeinfo.tm_sec);  
-      time_t t = mktime(&timeinfo);
-      struct timeval tv = {t, 0};
-      settimeofday(&tv, NULL);   
-    }
-    preferences.putString("currentTime", request->arg("daytime") + ":00");
+    DateTime new_time = parseDateTime(request->arg("daytime"));
+    char myDateFormat[21] = "YYYY-MM-DDThh:mm:ss";
+    Serial.println("new_time: " + String(new_time.toString(myDateFormat)));
+    rtc.adjust(new_time);
     request->redirect("/");
   });
 
   server.on("/setwlanprefix", HTTP_GET, [](AsyncWebServerRequest *request) {
     wlanPrefix = request->arg("prefix");
     preferences.putString("wlanPrefix", request->arg("prefix"));
-    preferences.putString("currentTime", currentTime);
     ESP.restart();
   });
 
   server.on("/setapPassword", HTTP_GET, [](AsyncWebServerRequest *request) {
     apPassword = request->arg("appassword");
     preferences.putString("apPassword", request->arg("appassword"));
-    preferences.putString("currentTime", currentTime);
     request->redirect("/");
     ESP.restart();
   });
@@ -371,19 +341,11 @@ void setup() {
       // Store the new Device ID in preferences
       preferences.putInt("deviceID", deviceID);
     }
-    preferences.putString("currentTime", currentTime);
     request->redirect("/");
     ESP.restart();
   });
 
-  server.on("/settimeSlice", HTTP_GET, [](AsyncWebServerRequest *request) {
-    timeSlice = request->arg("timeSlice").toInt();
-    preferences.putInt("timeSlice", timeSlice);
-    request->redirect("/");
-  });
-
   server.on("/reboot", HTTP_GET, [](AsyncWebServerRequest *request) {
-    preferences.putString("currentTime", currentTime);
     request->redirect("/");
     ESP.restart();
   });
@@ -418,29 +380,19 @@ void loop() {
     WiFi.mode(WIFI_OFF);
   }
 
-  //Store time from time to time
-  if (tick % timeSlice == 0) {
-    Serial.println("Storing Time");
-    preferences.putString("currentTime", currentTime);
-  }
-
-  time_t now;
-  struct tm timeinfo;
-  time(&now);
-  localtime_r(&now, &timeinfo);
-  char timeStr[20];
-  strftime(timeStr, sizeof(timeStr), "%Y-%m-%dT%H:%M:%S", &timeinfo);
-  currentTime = timeStr;
+  DateTime now = rtc.now();
+  char myDateFormat[21] = "YYYY-MM-DDThh:mm:ss";
+  currentTime = now.toString(myDateFormat);
   Serial.println(currentTime);
 
   //Hande GPIOS
-  if (timeinfo.tm_hour >= on && timeinfo.tm_hour < off && timeinfo.tm_mon == 11 && !Update.isRunning()) {
+  if (now.hour() >= on && now.hour() < off && now.month() == 12 && !Update.isRunning()) {
     Serial.print("Current Day of Month: ");
-    Serial.print(timeinfo.tm_mday);
+    Serial.print(now.day());
     Serial.print(" deviceID ");
     Serial.println(deviceID);
     Serial.print("Enable RPIO: ");
-    for (int i = 1; i <= timeinfo.tm_mday - (deviceID * 8) && i <= 8; i++) {
+    for (int i = 1; i <= now.day() - (deviceID * 8) && i <= 8; i++) {
       Serial.print(i);
       Serial.print(",");
       digitalWrite(gpioPins[i-1], HIGH);
