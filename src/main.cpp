@@ -32,7 +32,7 @@ size_t content_len;
 
 // Define your GPIO pins
 #ifdef ESP8266
-const int gpioPins[] = {3, 4, 5, 6, 7, 8, 9, 10};
+const int gpioPins[] = {16, 14, 12, 13, 15, 0, 4, 5};
 #else
 const int gpioPins[] = {GPIO_NUM_23, GPIO_NUM_22, GPIO_NUM_21, GPIO_NUM_19, GPIO_NUM_18, GPIO_NUM_5, GPIO_NUM_17, GPIO_NUM_16};
 #endif
