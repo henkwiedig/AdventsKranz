@@ -198,6 +198,7 @@ void setup() {
 
     // Display the current time
     html += "<h2>Current Time: " + currentTime + "</h2>";
+    html += "<h2>Current Tick: " + String(tick) + "</h2>";
 
     // Add a form for setting the day and time
     html += "<h2>Set Day and Time:</h2>";
