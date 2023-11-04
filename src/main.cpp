@@ -180,7 +180,7 @@ void setup() {
     html += "<h2>Set Device ID:</h2>";
     html += "<form method='GET' action='/setid'>";
     html += "  <label for 'id'>Enter Device ID (integer):</label>";
-    html += "  <input type='number' id='id' name='id' value='" + String(deviceID) + "'>";
+    html += "  <input type='number' id='id' name='id' value='" + String(deviceID) + "' min='0' max='2'>";
     html += "  <input type='submit' value='Set ID'>";
     html += "</form>";
 
