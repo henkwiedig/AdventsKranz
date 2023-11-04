@@ -155,7 +155,7 @@ void setup() {
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     String html = "<html><body>";
-    html += "<h1>Adventskranz nach Wichern</h1>";
+    html += "<h1>Adventskranz-" + String(deviceID) + " nach Wichern</h1>";
 
     // Display the current time
     html += "<h2>Current Time: " + currentTime + "</h2>";
