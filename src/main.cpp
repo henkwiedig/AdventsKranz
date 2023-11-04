@@ -117,7 +117,7 @@ void setup() {
 
 #ifdef ESP8266
   Serial.end();
-  I2C.pins(1, 2);
+  I2C.pins(SDA_PIN, SCL_PIN);
 #else
   Serial.begin(115200);
   I2C.setPins(SDA_PIN, SCL_PIN);
