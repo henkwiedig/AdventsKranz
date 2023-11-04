@@ -43,10 +43,8 @@ size_t content_len;
 // Define your GPIO pins
 #ifdef ESP8266
 const int gpioPins[] = {16, 14, 12, 13, 15, 0, 4, 5};
-int SDA_PIN = 1;
-int SCL_PIN = 3;
-#define SDA_PIN 1
-#define SCL_PIN 2
+#define SDA_PIN 2
+#define SCL_PIN 3
 #else
 const int gpioPins[] = {GPIO_NUM_23, GPIO_NUM_22, GPIO_NUM_21, GPIO_NUM_19, GPIO_NUM_18, GPIO_NUM_5, GPIO_NUM_17, GPIO_NUM_16};
 #define SDA_PIN GPIO_NUM_14
@@ -116,7 +114,7 @@ void handleDoUpdate(AsyncWebServerRequest *request, const String& filename, size
 void setup() {
 
 #ifdef ESP8266
-  Serial.end();
+  Serial.begin(115200,SERIAL_8N1,SERIAL_TX_ONLY);
   I2C.pins(SDA_PIN, SCL_PIN);
 #else
   Serial.begin(115200);
@@ -125,11 +123,12 @@ void setup() {
 
   if (! rtc.begin(&I2C)) {
     Serial.println("RTC module is NOT found");
-    pinMode(gpioPins[0], OUTPUT);
+    pinMode(LED_BUILTIN, OUTPUT);
     while(1) {
-        digitalWrite(gpioPins[0], HIGH);
+        Serial.println("RTC module is NOT found");
+        digitalWrite(LED_BUILTIN, HIGH);
         delay(500);
-        digitalWrite(gpioPins[0], LOW);
+        digitalWrite(LED_BUILTIN, LOW);
         delay(500);
     }
   }
